@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CallCoach Live</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f0f11;
+  --surface: #18181c;
+  --surface2: #222228;
+  --surface3: #2a2a32;
+  --border: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.14);
+  --text: #f0f0f2;
+  --muted: #8b8b99;
+  --accent: #6c63ff;
+  --accent-glow: rgba(108,99,255,0.18);
+  --red: #ff4757;
+  --green: #2ed573;
+  --amber: #ffa502;
+  --blue: #1e90ff;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── HEADER ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.logo { font-weight: 700; font-size: 16px; letter-spacing: -0.3px; white-space: nowrap; }
+.logo span { color: var(--accent); }
+
+.call-timer {
+  font-size: 13px; font-variant-numeric: tabular-nums;
+  color: var(--muted); font-family: monospace;
+  background: var(--surface2); border: 1px solid var(--border);
+  padding: 4px 10px; border-radius: 999px;
+}
+.call-timer.active { color: var(--green); border-color: rgba(46,213,115,0.3); }
+
+select {
+  background: var(--surface2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text); font-size: 13px;
+  padding: 5px 8px; cursor: pointer; outline: none;
+}
+select:focus { border-color: var(--accent); }
+
+.toggle-group { display: flex; overflow: hidden; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
+.toggle-group button {
+  background: var(--surface2); border: none; color: var(--muted);
+  padding: 5px 11px; font-size: 12px; cursor: pointer; transition: all 0.15s; font-family: inherit;
+}
+.toggle-group button.active { background: var(--accent); color: #fff; }
+
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--muted);
+  padding: 4px 10px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 999px; white-space: nowrap;
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.status-pill.listening .status-dot { background: var(--red); animation: blink 1s infinite; }
+.status-pill.listening { color: var(--text); border-color: rgba(255,71,87,0.3); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.hdr-btn {
+  padding: 5px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface2); color: var(--text);
+  font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.hdr-btn:hover { border-color: var(--accent); background: var(--surface3); }
+.hdr-btn.mic-active { background: rgba(255,71,87,0.12); border-color: var(--red); color: var(--red); }
+.hdr-btn.danger { border-color: rgba(255,71,87,0.3); color: var(--muted); }
+.hdr-btn.danger:hover { background: rgba(255,71,87,0.1); border-color: var(--red); color: var(--red); }
+.hdr-btn.history-btn { color: var(--muted); }
+.hdr-btn.history-btn:hover { color: var(--text); }
+
+/* ── BODY: 3-column layout ── */
+.body-wrap {
+  display: grid;
+  grid-template-columns: 260px 1fr 380px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── LEFT PANEL: LPMAMA ── */
+.left-panel {
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.panel-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  color: var(--muted); text-transform: uppercase;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 6px;
+}
+.panel-label-sub { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 10px; opacity: 0.6; }
+
+.lpmama-scroll { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+
+.lpmama-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.lpmama-item.covered { border-color: rgba(46,213,115,0.3); }
+.lpmama-item.ai-suggested { border-color: rgba(108,99,255,0.4); animation: pulse-border 2s ease-out forwards; }
+@keyframes pulse-border { 0%{box-shadow:0 0 0 0 rgba(108,99,255,0.4)} 70%{box-shadow:0 0 0 4px rgba(108,99,255,0)} 100%{box-shadow:none} }
+
+.lpmama-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; cursor: pointer;
+}
+.lpmama-check {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.2s; font-size: 10px;
+  background: var(--surface2);
+}
+.lpmama-item.covered .lpmama-check { background: var(--green); border-color: var(--green); color: #0f0f11; }
+.lpmama-letter {
+  font-size: 13px; font-weight: 700; color: var(--accent); width: 14px; flex-shrink: 0;
+}
+.lpmama-name { font-size: 12px; font-weight: 500; flex: 1; }
+.lpmama-ai-badge {
+  font-size: 9px; padding: 1px 5px; border-radius: 999px;
+  background: rgba(108,99,255,0.15); color: var(--accent);
+  font-weight: 600; white-space: nowrap;
+}
+.lpmama-detail {
+  padding: 0 10px 8px 36px;
+  font-size: 11px; color: var(--muted); line-height: 1.5;
+  display: none;
+}
+.lpmama-item.covered .lpmama-detail { display: block; color: rgba(46,213,115,0.7); }
+.lpmama-item.open .lpmama-detail { display: block; }
+.lpmama-note {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text); font-size: 11px;
+  padding: 5px 7px; margin-top: 4px; resize: none; height: 40px;
+  font-family: inherit; outline: none;
+}
+.lpmama-note:focus { border-color: var(--accent); }
+
+.lpmama-scan-btn {
+  margin: 8px 10px 10px;
+  width: calc(100% - 20px);
+  padding: 7px; font-size: 11px; font-weight: 600;
+  background: var(--surface2); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); color: var(--muted); cursor: pointer;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.lpmama-scan-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.lpmama-scan-btn:disabled { opacity: 0.4; cursor: default; }
+
+.lpmama-progress {
+  margin: 0 10px 6px;
+  font-size: 10px; color: var(--muted);
+  display: flex; align-items: center; gap: 6px;
+}
+.lpmama-progress-bar {
+  flex: 1; height: 3px; background: var(--border);
+  border-radius: 2px; overflow: hidden;
+}
+.lpmama-progress-fill {
+  height: 100%; background: var(--green); border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+/* BUYER-ONLY label */
+.buyer-only-note {
+  padding: 10px 12px; font-size: 11px; color: var(--muted);
+  font-style: italic; text-align: center;
+}
+
+/* ── CENTER PANEL: Transcript ── */
+.center-panel {
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.transcript-scroll {
+  flex: 1; overflow-y: auto; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.transcript-scroll::-webkit-scrollbar { width: 3px; }
+.transcript-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+.transcript-placeholder { color: var(--muted); font-size: 13px; font-style: italic; margin-top: 6px; }
+
+.transcript-line {
+  font-size: 13px; line-height: 1.6; color: var(--text);
+  padding: 6px 10px; border-radius: 6px;
+  background: var(--surface); border-left: 2px solid var(--border-strong);
+}
+.transcript-line .ts { font-size: 10px; color: var(--muted); margin-bottom: 1px; display: block; }
+.transcript-line.interim { opacity: 0.45; border-left-color: var(--accent); font-style: italic; }
+.transcript-line.manual { border-left-color: var(--amber); }
+
+.manual-area {
+  border-top: 1px solid var(--border);
+  padding: 8px 10px;
+  display: flex; gap: 7px; flex-shrink: 0; align-items: flex-end;
+}
+.manual-area textarea {
+  flex: 1; resize: none; height: 48px;
+  background: var(--surface2); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 13px;
+  padding: 7px 10px; font-family: inherit; outline: none; line-height: 1.4;
+}
+.manual-area textarea:focus { border-color: var(--accent); }
+.manual-area textarea::placeholder { color: var(--muted); }
+.manual-submit {
+  background: var(--surface2); border: 1px solid var(--border-strong);
+  color: var(--muted); border-radius: var(--radius-sm); padding: 0 11px;
+  font-size: 12px; cursor: pointer; transition: all 0.15s; height: 48px; white-space: nowrap;
+}
+.manual-submit:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ── RIGHT PANEL: Coaching ── */
+.right-panel {
+  display: flex; flex-direction: column; overflow: hidden;
+  border-left: 1px solid var(--border);
+}
+
+.action-buttons {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  flex-shrink: 0; border-bottom: 1px solid var(--border);
+  background: var(--border); gap: 1px;
+}
+.action-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; padding: 13px 6px;
+  background: var(--surface); border: none;
+  color: var(--text); cursor: pointer; transition: all 0.15s; font-family: inherit;
+}
+.action-btn:hover { background: var(--surface2); }
+.action-btn:active { transform: scale(0.97); }
+.action-btn.loading { pointer-events: none; }
+.action-btn .btn-icon { font-size: 17px; }
+.action-btn .btn-label { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.action-btn .btn-sub { font-size: 9px; color: var(--muted); text-align: center; }
+.action-btn.loading .btn-icon { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-objection { border-top: 2px solid var(--red); }
+.btn-objection:hover { background: rgba(255,71,87,0.06); }
+.btn-question { border-top: 2px solid var(--accent); }
+.btn-question:hover { background: rgba(108,99,255,0.06); }
+.btn-close-appt { border-top: 2px solid var(--green); }
+.btn-close-appt:hover { background: rgba(46,213,115,0.06); }
+
+.coaching-output {
+  flex: 1; overflow-y: auto; padding: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.coaching-output::-webkit-scrollbar { width: 3px; }
+.coaching-output::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+.coaching-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; gap: 8px; color: var(--muted); font-size: 12px; text-align: center; padding: 16px;
+}
+.coaching-empty .e-icon { font-size: 28px; opacity: 0.35; }
+
+.coaching-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; flex-shrink: 0;
+}
+.coaching-card-hdr {
+  display: flex; align-items: center; gap: 7px;
+  padding: 9px 12px; border-bottom: 1px solid var(--border);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+}
+.coaching-card-hdr.objection { color: var(--red); }
+.coaching-card-hdr.question { color: var(--accent); }
+.coaching-card-hdr.close { color: var(--green); }
+.coaching-card-hdr .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.coaching-card-hdr .timestamp { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 10px; }
+
+.coaching-card-body { padding: 12px; }
+
+.option-list { display: flex; flex-direction: column; gap: 7px; }
+.option {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+  font-size: 13px; line-height: 1.6; color: var(--text);
+  cursor: pointer; transition: all 0.15s;
+}
+.option:hover { border-color: var(--border-strong); }
+.option.selected { border-color: var(--accent); background: var(--accent-glow); }
+.option-meta {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+}
+.option-num {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--surface3); font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; color: var(--muted); flex-shrink: 0;
+}
+.option-tag {
+  font-size: 9px; font-weight: 700; padding: 1px 6px;
+  border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.tag-nepq { background: rgba(108,99,255,0.15); color: #a29eff; }
+.tag-reverse { background: rgba(46,213,115,0.12); color: #2ed573; }
+.tag-mfo { background: rgba(255,165,2,0.12); color: #ffa502; }
+.tag-belfort { background: rgba(30,144,255,0.12); color: #60b0ff; }
+
+.option-text { font-size: 13px; line-height: 1.6; }
+
+.coaching-note {
+  margin-top: 8px; padding: 7px 10px;
+  background: rgba(108,99,255,0.06);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  font-size: 11px; color: var(--muted); font-style: italic;
+}
+.coaching-context-line {
+  font-size: 11px; color: var(--muted); margin-bottom: 8px; font-style: italic;
+}
+
+.streaming-text {
+  font-size: 13px; line-height: 1.7; color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+}
+.cursor {
+  display: inline-block; width: 2px; height: 13px;
+  background: var(--accent); animation: blink 0.8s infinite; vertical-align: middle; margin-left: 1px;
+}
+.loading-dots span {
+  display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--muted); animation: bounce 1.2s infinite; margin: 0 2px;
+}
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
+
+.context-bar {
+  flex-shrink: 0; border-top: 1px solid var(--border);
+  padding: 6px 12px; display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--muted);
+}
+.ctx-pill {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 999px; padding: 2px 7px; font-size: 10px;
+}
+
+.error-banner {
+  background: rgba(255,71,87,0.1); border: 1px solid rgba(255,71,87,0.3);
+  border-radius: var(--radius-sm); padding: 9px 12px; font-size: 12px; color: var(--red);
+}
+
+/* ── HISTORY MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 20px;
+}
+.modal-overlay.hidden { display: none; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); width: 100%; max-width: 680px;
+  max-height: 80vh; display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-hdr {
+  display: flex; align-items: center; padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px; font-weight: 600;
+}
+.modal-close {
+  margin-left: auto; background: none; border: none; color: var(--muted);
+  font-size: 20px; cursor: pointer; line-height: 1; padding: 0 4px;
+}
+.modal-close:hover { color: var(--text); }
+.modal-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+
+.history-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); overflow: hidden;
+}
+.history-card-hdr {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.history-card-hdr:hover { background: var(--surface3); }
+.hc-lead { font-size: 12px; font-weight: 600; }
+.hc-time { font-size: 11px; color: var(--muted); margin-left: auto; }
+.hc-duration { font-size: 11px; color: var(--muted); }
+.history-card-body { padding: 12px 14px; display: none; }
+.history-card.open .history-card-body { display: block; }
+.hc-section { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; margin: 10px 0 5px; }
+.hc-section:first-child { margin-top: 0; }
+.hc-transcript { font-size: 12px; line-height: 1.6; color: var(--muted); white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
+.hc-coaching-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 10px; margin-bottom: 6px;
+  font-size: 12px; line-height: 1.5;
+}
+.hc-coaching-mode { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; }
+.history-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 30px; }
+
+.modal-footer { padding: 10px 18px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+.modal-btn {
+  padding: 6px 14px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500;
+  border: 1px solid var(--border-strong); background: var(--surface2); color: var(--muted);
+  cursor: pointer; transition: all 0.15s;
+}
+.modal-btn:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface3); }
+.modal-btn.danger:hover { background: rgba(255,71,87,0.1); border-color: var(--red); color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="header">
+  <div class="logo">Call<span>Coach</span></div>
+
+  <div class="call-timer" id="callTimer">00:00</div>
+
+  <select id="leadType" onchange="onLeadTypeChange()">
+    <option value="">Lead type...</option>
+    <optgroup label="Buyer Leads">
+      <option value="zillow">Zillow / Inbound Buyer</option>
+      <option value="fthb">First-Time Home Buyer</option>
+      <option value="open_house">Open House Lead</option>
+      <option value="warm_buyer">Warm Referral (Buyer)</option>
+    </optgroup>
+    <optgroup label="Seller Leads">
+      <option value="fsbo">FSBO</option>
+      <option value="expired">Expired Listing</option>
+      <option value="circle">Circle Prospecting</option>
+      <option value="absentee">Absentee Owner</option>
+      <option value="probate">Probate</option>
+      <option value="frbo">FRBO</option>
+      <option value="downsizer">Downsizer</option>
+      <option value="warm_seller">Warm Referral (Seller)</option>
+    </optgroup>
+  </select>
+
+  <div class="toggle-group">
+    <button id="apptInPerson" class="active" onclick="setAppt('in-person')">In-Person</button>
+    <button id="apptPhone" onclick="setAppt('phone')">Phone</button>
+  </div>
+
+  <div class="status-pill" id="statusPill">
+    <div class="status-dot"></div>
+    <span id="statusText">Idle</span>
+  </div>
+
+  <button class="hdr-btn" id="micBtn" onclick="toggleMic()">🎙 Start Listening</button>
+  <button class="hdr-btn danger" onclick="confirmNewCall()">↺ New Call</button>
+  <button class="hdr-btn history-btn" onclick="openHistory()">📋 History</button>
+</header>
+
+<!-- ── BODY ── -->
+<div class="body-wrap">
+
+  <!-- LEFT: LPMAMA Tracker -->
+  <div class="left-panel">
+    <div class="panel-label">
+      LPMAMA
+      <span class="panel-label-sub">Buyer qualifier</span>
+    </div>
+    <div id="lpmamaBuyerOnly" class="buyer-only-note" style="display:none;">
+      Select a buyer lead type to activate LPMAMA tracking.
+    </div>
+    <div id="lpmamaContent">
+      <div class="lpmama-progress" id="lpmamaProgress">
+        <span id="lpmamaCount">0/6</span>
+        <div class="lpmama-progress-bar"><div class="lpmama-progress-fill" id="lpmamaFill" style="width:0%"></div></div>
+      </div>
+      <div class="lpmama-scroll" id="lpmamaScroll"></div>
+      <button class="lpmama-scan-btn" id="lpmamaScanBtn" onclick="scanTranscriptForLPMAMA()">
+        ✦ AI Scan Transcript
+      </button>
+    </div>
+  </div>
+
+  <!-- CENTER: Transcript -->
+  <div class="center-panel">
+    <div class="panel-label">
+      Live Transcript
+      <span class="panel-label-sub">· 90s context window</span>
+    </div>
+    <div class="transcript-scroll" id="transcriptScroll">
+      <div class="transcript-placeholder" id="transcriptPlaceholder">
+        Hit <strong>Start Listening</strong> — or type a note below to add context manually.
+      </div>
+    </div>
+    <div class="manual-area">
+      <textarea id="manualInput" placeholder="Type what the lead said or describe the situation… (Enter to add)" onkeydown="handleManualKey(event)"></textarea>
+      <button class="manual-submit" onclick="addManualLine()">Add ↵</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Coaching -->
+  <div class="right-panel">
+    <div class="action-buttons">
+      <button class="action-btn btn-objection" id="btnObj" onclick="triggerCoach('objection')">
+        <span class="btn-icon">🛡</span>
+        <span class="btn-label">Objection</span>
+        <span class="btn-sub">Handle resistance</span>
+      </button>
+      <button class="action-btn btn-question" id="btnQ" onclick="triggerCoach('question')">
+        <span class="btn-icon">💡</span>
+        <span class="btn-label">Question</span>
+        <span class="btn-sub">NEPQ next step</span>
+      </button>
+      <button class="action-btn btn-close-appt" id="btnClose" onclick="triggerCoach('close')">
+        <span class="btn-icon">📅</span>
+        <span class="btn-label">Close</span>
+        <span class="btn-sub">Book appointment</span>
+      </button>
+    </div>
+
+    <div class="coaching-output" id="coachingOutput">
+      <div class="coaching-empty">
+        <div class="e-icon">🎯</div>
+        <div>Start the call, then hit a button when you need help.</div>
+        <div style="font-size:11px;margin-top:3px;opacity:0.6;">Objection · Question · Close</div>
+      </div>
+    </div>
+
+    <div class="context-bar">
+      <span>Context:</span>
+      <span class="ctx-pill" id="ctxWords">0 words</span>
+      <span class="ctx-pill" id="ctxLines">0 lines</span>
+      <span style="margin-left:auto;opacity:0.4;font-size:9px;">claude-sonnet-4-20250514</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── HISTORY MODAL ── -->
+<div class="modal-overlay hidden" id="historyModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      Call History
+      <button class="modal-close" onclick="closeHistory()">×</button>
+    </div>
+    <div class="modal-body" id="historyBody"></div>
+    <div class="modal-footer">
+      <button class="modal-btn danger" onclick="clearHistory()">Clear all history</button>
+      <button class="modal-btn" onclick="closeHistory()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let recognition = null;
+let isListening = false;
+let apptType = 'in-person';
+const transcriptLines = []; // { text, ts, final, manual }
+const MAX_CONTEXT_MS = 90 * 1000;
+const coachingHistory = []; // for this call session
+let callStartTime = null;
+let timerInterval = null;
+let isBuyerLead = false;
+
+// LPMAMA state
+const LPMAMA_ITEMS = [
+  { key: 'L', letter: 'L', name: 'Location',   prompt: 'Where are they looking to buy?',          note: '' },
+  { key: 'P', letter: 'P', name: 'Price',       prompt: 'What is their budget / price range?',     note: '' },
+  { key: 'M', letter: 'M', name: 'Motivation',  prompt: 'Why are they looking to buy right now?',  note: '' },
+  { key: 'A', letter: 'A', name: 'Agent',       prompt: 'Are they working with another agent?',    note: '' },
+  { key: 'Ma', letter: 'M', name: 'Mortgage',   prompt: 'Are they pre-approved? What lender?',    note: '' },
+  { key: 'Ap', letter: 'A', name: 'Appointment',prompt: 'Have you set the next step / appointment?', note: '' },
+];
+const lpmamaState = {};
+LPMAMA_ITEMS.forEach(i => lpmamaState[i.key] = { covered: false, note: '', aiSuggested: false });
+
+// ═══════════════════════════════════════════════
+// BUYER LEAD TYPES
+// ═══════════════════════════════════════════════
+const BUYER_LEAD_TYPES = new Set(['zillow','fthb','open_house','warm_buyer']);
+
+function onLeadTypeChange() {
+  const lt = document.getElementById('leadType').value;
+  isBuyerLead = BUYER_LEAD_TYPES.has(lt);
+  document.getElementById('lpmamaBuyerOnly').style.display = isBuyerLead ? 'none' : 'block';
+  document.getElementById('lpmamaContent').style.display = isBuyerLead ? 'flex' : 'none';
+  document.getElementById('lpmamaContent').style.flexDirection = 'column';
+}
+
+// ═══════════════════════════════════════════════
+// LPMAMA RENDER
+// ═══════════════════════════════════════════════
+function renderLPMAMA() {
+  const scroll = document.getElementById('lpmamaScroll');
+  scroll.innerHTML = '';
+  LPMAMA_ITEMS.forEach(item => {
+    const state = lpmamaState[item.key];
+    const div = document.createElement('div');
+    div.className = 'lpmama-item' + (state.covered ? ' covered' : '') + (state.aiSuggested ? ' ai-suggested' : '');
+    div.id = 'lpmama-' + item.key;
+    div.innerHTML = `
+      <div class="lpmama-header" onclick="toggleLpmamaItem('${item.key}')">
+        <div class="lpmama-check">${state.covered ? '✓' : ''}</div>
+        <div class="lpmama-letter">${item.letter}</div>
+        <div class="lpmama-name">${item.name}</div>
+        ${state.aiSuggested && !state.covered ? '<span class="lpmama-ai-badge">AI</span>' : ''}
+      </div>
+      <div class="lpmama-detail">
+        <div style="margin-bottom:4px;opacity:0.7">${state.note || item.prompt}</div>
+        <textarea class="lpmama-note" placeholder="Notes…" onchange="saveLpmamaNote('${item.key}', this.value)">${state.note}</textarea>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button onclick="markLpmama('${item.key}', true)" style="flex:1;padding:4px;font-size:11px;border-radius:4px;border:1px solid rgba(46,213,115,0.3);background:rgba(46,213,115,0.08);color:var(--green);cursor:pointer">✓ Covered</button>
+          ${state.covered ? `<button onclick="markLpmama('${item.key}', false)" style="flex:1;padding:4px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer">Unmark</button>` : ''}
+        </div>
+      </div>`;
+    scroll.appendChild(div);
+  });
+  updateLpmamaProgress();
+}
+
+function toggleLpmamaItem(key) {
+  const el = document.getElementById('lpmama-' + key);
+  el.classList.toggle('open');
+}
+
+function markLpmama(key, covered) {
+  lpmamaState[key].covered = covered;
+  lpmamaState[key].aiSuggested = false;
+  renderLPMAMA();
+  // open next uncovered
+  if (covered) {
+    const nextUncovered = LPMAMA_ITEMS.find(i => !lpmamaState[i.key].covered && i.key !== key);
+    if (nextUncovered) {
+      setTimeout(() => {
+        const el = document.getElementById('lpmama-' + nextUncovered.key);
+        if (el) el.classList.add('open');
+      }, 200);
+    }
+  }
+}
+
+function saveLpmamaNote(key, val) {
+  lpmamaState[key].note = val;
+}
+
+function updateLpmamaProgress() {
+  const covered = LPMAMA_ITEMS.filter(i => lpmamaState[i.key].covered).length;
+  const total = LPMAMA_ITEMS.length;
+  document.getElementById('lpmamaCount').textContent = `${covered}/${total}`;
+  document.getElementById('lpmamaFill').style.width = `${Math.round(covered/total*100)}%`;
+}
+
+// AI scan transcript for LPMAMA coverage
+async function scanTranscriptForLPMAMA() {
+  const ctx = getContext();
+  if (!ctx.trim()) { showError('No transcript yet to scan.'); return; }
+
+  const btn = document.getElementById('lpmamaScanBtn');
+  btn.disabled = true; btn.textContent = '✦ Scanning…';
+
+  const prompt = `You are analyzing a real estate buyer qualification call transcript. The LPMAMA framework has 6 items: Location (where they want to buy), Price (budget/range), Motivation (why buying now), Agent (if working with another agent), Mortgage (pre-approval status), Appointment (next step set).
+
+Transcript:
+"""
+${ctx}
+"""
+
+For each LPMAMA item, determine:
+1. Was it covered/addressed in the transcript? (true/false)
+2. If covered, what was the key detail mentioned? (short phrase, or empty string)
+
+Respond ONLY with valid JSON like this:
+{
+  "L": { "covered": true, "note": "Torrance / South Bay area" },
+  "P": { "covered": false, "note": "" },
+  "M": { "covered": true, "note": "relocating for work" },
+  "A": { "covered": false, "note": "" },
+  "Ma": { "covered": true, "note": "pre-approved at Chase, $650k" },
+  "Ap": { "covered": false, "note": "" }
+}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const raw = data?.content?.[0]?.text || '';
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+
+    let anyNew = false;
+    Object.entries(parsed).forEach(([key, val]) => {
+      if (val.covered && !lpmamaState[key].covered) {
+        lpmamaState[key].covered = true;
+        lpmamaState[key].note = val.note || '';
+        lpmamaState[key].aiSuggested = true;
+        anyNew = true;
+      }
+    });
+
+    renderLPMAMA();
+
+    if (!anyNew) {
+      btn.textContent = '✓ Nothing new detected';
+    } else {
+      btn.textContent = '✓ Updated';
+    }
+  } catch(e) {
+    showError('LPMAMA scan failed: ' + e.message);
+    btn.textContent = '✦ AI Scan Transcript';
+  } finally {
+    btn.disabled = false;
+    setTimeout(() => { btn.textContent = '✦ AI Scan Transcript'; }, 3000);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// CALL TIMER
+// ═══════════════════════════════════════════════
+function startTimer() {
+  callStartTime = Date.now();
+  timerInterval = setInterval(updateTimer, 1000);
+  updateTimer();
+  document.getElementById('callTimer').classList.add('active');
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  document.getElementById('callTimer').classList.remove('active');
+}
+
+function updateTimer() {
+  if (!callStartTime) return;
+  const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2,'0');
+  const s = String(elapsed % 60).padStart(2,'0');
+  document.getElementById('callTimer').textContent = `${m}:${s}`;
+}
+
+function getCallDuration() {
+  if (!callStartTime) return '0:00';
+  const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════════════
+// TRANSCRIPT
+// ═══════════════════════════════════════════════
+function getContext() {
+  const cutoff = Date.now() - MAX_CONTEXT_MS;
+  return transcriptLines
+    .filter(l => l.ts >= cutoff && l.final)
+    .map(l => l.text)
+    .join('\n');
+}
+
+function getFullTranscript() {
+  return transcriptLines.filter(l => l.final).map(l => l.text).join('\n');
+}
+
+function addLine(text, final = true, isManual = false) {
+  if (!text.trim()) return;
+  if (!callStartTime) startTimer();
+  const ts = Date.now();
+  transcriptLines.push({ text: text.trim(), ts, final, manual: isManual });
+
+  const ph = document.getElementById('transcriptPlaceholder');
+  if (ph) ph.remove();
+
+  renderTranscriptLine(text, ts, isManual);
+  updateContextStats();
+  scrollTranscriptBottom();
+}
+
+function renderTranscriptLine(text, ts, isManual) {
+  const scroll = document.getElementById('transcriptScroll');
+  const line = document.createElement('div');
+  line.className = 'transcript-line' + (isManual ? ' manual' : '');
+  const time = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  line.innerHTML = `<span class="ts">${time}${isManual ? ' · manual' : ''}</span>${escHtml(text)}`;
+  scroll.appendChild(line);
+}
+
+function scrollTranscriptBottom() {
+  const s = document.getElementById('transcriptScroll');
+  s.scrollTop = s.scrollHeight;
+}
+
+function updateContextStats() {
+  const ctx = getContext();
+  const words = ctx.split(/\s+/).filter(Boolean).length;
+  const lines = transcriptLines.filter(l => l.final).length;
+  document.getElementById('ctxWords').textContent = `${words} words`;
+  document.getElementById('ctxLines').textContent = `${lines} lines`;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ═══════════════════════════════════════════════
+// MIC
+// ═══════════════════════════════════════════════
+function toggleMic() {
+  if (isListening) stopMic(); else startMic();
+}
+
+function startMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showError('Web Speech API not supported. Use Chrome or Edge.'); return; }
+
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  let interimEl = null;
+
+  recognition.onstart = () => {
+    isListening = true;
+    setStatus('listening', '● Listening');
+    const btn = document.getElementById('micBtn');
+    btn.textContent = '⏹ Stop Listening';
+    btn.classList.add('mic-active');
+    if (!callStartTime) startTimer();
+  };
+
+  recognition.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (r.isFinal) {
+        if (interimEl) { interimEl.remove(); interimEl = null; }
+        addLine(r[0].transcript);
+      } else {
+        interim += r[0].transcript;
+      }
+    }
+    if (interim) {
+      if (!interimEl) {
+        interimEl = document.createElement('div');
+        interimEl.className = 'transcript-line interim';
+        document.getElementById('transcriptScroll').appendChild(interimEl);
+      }
+      interimEl.innerHTML = `<span class="ts">…interim</span>${escHtml(interim)}`;
+      scrollTranscriptBottom();
+    } else if (interimEl) {
+      interimEl.remove(); interimEl = null;
+    }
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === 'not-allowed') showError('Mic access denied. Allow microphone in your browser settings.');
+    else if (e.error !== 'no-speech') showError(`Mic error: ${e.error}`);
+  };
+
+  recognition.onend = () => {
+    if (isListening) { try { recognition.start(); } catch(err) {} }
+  };
+
+  try { recognition.start(); } catch(err) { showError('Could not start microphone: ' + err.message); }
+}
+
+function stopMic() {
+  isListening = false;
+  if (recognition) { try { recognition.stop(); } catch(e) {} }
+  setStatus('idle', 'Idle');
+  const btn = document.getElementById('micBtn');
+  btn.textContent = '🎙 Start Listening';
+  btn.classList.remove('mic-active');
+}
+
+function setStatus(state, text) {
+  const pill = document.getElementById('statusPill');
+  pill.className = 'status-pill' + (state === 'listening' ? ' listening' : '');
+  document.getElementById('statusText').textContent = text;
+}
+
+// ═══════════════════════════════════════════════
+// MANUAL INPUT
+// ═══════════════════════════════════════════════
+function addManualLine() {
+  const inp = document.getElementById('manualInput');
+  const text = inp.value.trim();
+  if (!text) return;
+  addLine(text, true, true);
+  inp.value = '';
+}
+
+function handleManualKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addManualLine(); }
+}
+
+// ═══════════════════════════════════════════════
+// APPOINTMENT TOGGLE
+// ═══════════════════════════════════════════════
+function setAppt(type) {
+  apptType = type;
+  document.getElementById('apptInPerson').classList.toggle('active', type === 'in-person');
+  document.getElementById('apptPhone').classList.toggle('active', type === 'phone');
+}
+
+// ═══════════════════════════════════════════════
+// SYSTEM PROMPT
+// ═══════════════════════════════════════════════
+function buildSystemPrompt() {
+  return `You are an elite real estate sales coach embedded in a live call tool for Casey Francis, an agent with The RISE Group South Bay in Los Angeles. You have fully internalized four sales methodologies and blend them naturally in every response.
+
+## NEPQ (Neuro-Emotional Persuasion Questioning)
+5-stage sequence: Connection → Situation → Problem Awareness → Consequence → Solution Awareness.
+- Connection: "Have you found what you're looking for, or are you still looking for…?"
+- Situation: "What's your experience been trying to handle this on your own so far?"
+- Problem Awareness: "What challenges has that created for you personally?"
+- Consequence: "And if that continues… what does that mean for your plans?"
+- Solution Awareness: "What would it mean for you if you had someone handling all that?"
+Use verbal pauses with ellipses "…" to slow the conversation and deepen emotional engagement. One question at a time. Never rush to pitch.
+
+## Reverse Selling (Brandon Mulrenin)
+Detached authority posture. Agent acts like they do not need the business.
+- Reverse Presumptive: "I get the feeling that even if I could get you a better result, there's probably no way you'd meet with me, right?"
+- Socratic: "If you were the buyer looking at a home sitting on market a long time, what kind of offer would you make?"
+- Because: "Because let's face it, you're not going to do anything unless it makes sense, right?"
+- Permission: "Can I share my biggest concern with you?"
+- Pattern interrupt opener: "Hey [Name]? Yeah, this is just [agent] with RISE Real Estate… I'm not sure if you can help me out or not…"
+ARP Objection Method: Acknowledge → Reframe → Permission question.
+
+## Mike Ferry Scripts (MFO)
+Real estate-specific verbatim objection handlers:
+- "We want to think it over" → "That's great… since three minds are better than two… let's think out loud together… tell me… what are you thinking about?"
+- "We want to sleep on it" → "You're right… this is a big decision… Let's do this… sign the contract tonight… contingent on your approval within 24 hours… you have no obligation if you say no in the morning…"
+- "We'll save the commission by selling ourselves" → "Only 2% of FSBOs sell themselves… 98% are listed by agents… can you afford a 2% chance of selling your home?"
+- "Another agent said more money" → "An agent who lists overpriced just plans to beat you up on price week after week… is that what you want? Do you want the truth?"
+- "I have a friend in the business" → "Do you absolutely have to sell… or are you just looking to do your friend a favor? Obviously you had me out for a reason… right?"
+- "Let's list high and come down" → "Would you rather have a bidding war… or not have an opportunity to negotiate any offers at all?"
+Close language: "All we need to do now is simply… sign the contract… so I can help you get what you want… in the time you want… won't that be great?"
+
+## Straight Line / Jordan Belfort
+Build certainty on 3 levels: the opportunity, the agent (Casey), the company (RISE Group South Bay).
+Qualification goal: 1) What they're currently doing, 2) Their challenges, 3) Their pain.
+Loop objections: acknowledge → reframe → close again. Never argue. Use cost minimizers.
+"If I'd been your advisor for the last three years… you wouldn't be saying let me think about it… you'd be jumping through the phone right now. Am I right?"
+
+## YOUR ROLE
+Analyze the transcript context and lead type, then generate coaching that sounds like a seasoned coach who has internalized all four frameworks. Every line must be immediately speakable. Natural, confident, advisor tone. No dashes. No sounding scripted or corporate. The agent is Casey Francis and his brokerage is RISE Real Estate / The RISE Group South Bay.`;
+}
+
+// ═══════════════════════════════════════════════
+// LEAD CONTEXT
+// ═══════════════════════════════════════════════
+const LEAD_CONTEXT = {
+  zillow: 'Zillow inbound buyer — clicked a listing or filled a home search form. Qualify with LPMAMA: Location, Price, Motivation, Agent, Mortgage, Appointment. Goal: book a buyer consult.',
+  fthb: 'First-time home buyer — often nervous and overwhelmed. Build trust first. Uncover pre-approval status and timeline. Goal: set a buyer consult.',
+  open_house: 'Open house lead — may be casually browsing or actively searching. Determine if they have an agent. Goal: qualify motivation and set next step.',
+  warm_buyer: 'Warm referral buyer — higher trust baseline. Confirm needs quickly. Goal: book meeting fast.',
+  fsbo: 'FSBO — For Sale By Owner. Guarded and resistant to agents. Use Reverse Selling detached posture and pattern interrupt. Goal: disarm, build curiosity, set listing appointment.',
+  expired: 'Expired listing — frustrated their home did not sell, may blame prior agent or market. Use empathy and Socratic questioning. Goal: differentiate approach, set appointment.',
+  circle: 'Circle prospecting cold call — neighbor of recent sale or active listing. Goal: pattern interrupt, build curiosity about market activity, pivot to seller conversation.',
+  absentee: 'Absentee owner / landlord — owns but does not live in the property. Goal: explore if they have considered selling and uncover their timeline.',
+  probate: 'Probate or inherited property — emotionally sensitive situation. Lead with empathy. Goal: understand their situation, offer to simplify the process, set appointment.',
+  frbo: 'For Rent By Owner — a landlord renting their property. Goal: explore if they have considered selling or would be open to an investor conversation.',
+  downsizer: 'Downsizer — often 55 or older, looking for something smaller. Goal: uncover timeline, explore equity position, book consult.',
+  warm_seller: 'Warm referral seller — higher trust baseline. Move quickly to pricing and timeline. Goal: set listing appointment.',
+  '': 'General outbound real estate call — adapt coaching to the transcript context.',
+};
+
+// ═══════════════════════════════════════════════
+// USER PROMPTS
+// ═══════════════════════════════════════════════
+function buildUserPrompt(mode, context, leadCtx) {
+  const contextBlock = context.trim()
+    ? `RECENT TRANSCRIPT (last 90 seconds):\n"""\n${context}\n"""`
+    : `RECENT TRANSCRIPT: [No transcript yet — call is just starting or no audio captured yet]`;
+
+  const apptLabel = apptType === 'in-person' ? 'in-person meeting at their home or Casey\'s office' : 'phone or Zoom call';
+
+  if (mode === 'objection') {
+    return `${contextBlock}
+
+LEAD TYPE: ${leadCtx}
+APPOINTMENT TYPE: ${apptLabel}
+
+TASK — OBJECTION HANDLE:
+Identify the most recent objection or resistance the lead expressed. Then generate exactly 3 response options Casey can say right now. Each option must use a different framework and have a clearly different approach or intensity. Label each with the framework name in brackets.
+
+Format EXACTLY as follows — plain text only, no markdown:
+
+OBJECTION DETECTED: [one sentence naming the specific objection]
+
+OPTION 1 [NEPQ]
+[Words Casey says — natural, conversational, uses a question to loop the objection]
+
+OPTION 2 [Reverse Selling]
+[Words Casey says — detached posture, reverse presumptive or "because" framing]
+
+OPTION 3 [Mike Ferry]
+[Words Casey says — direct reframe from MFO seller objection scripts, pivot back to close]
+
+COACH NOTE: [One sentence on tonality or pacing right now]`;
+  }
+
+  if (mode === 'question') {
+    return `${contextBlock}
+
+LEAD TYPE: ${leadCtx}
+APPOINTMENT TYPE: ${apptLabel}
+
+TASK — ASK QUESTION:
+Identify which NEPQ stage the call is currently at based on the transcript. Then generate exactly 3 question options to ask right now. Prioritize questions that make the lead articulate their own pain, desire, or consequence — not informational questions that just serve the agent. Each option should use a different questioning approach.
+
+Format EXACTLY as follows:
+
+CALL STAGE: [Connection / Situation / Problem Awareness / Consequence / Solution Awareness]
+
+OPTION 1 [Consequence Question]
+[The question Casey asks]
+
+OPTION 2 [Reverse Presumptive]
+[The question Casey asks]
+
+OPTION 3 [Socratic]
+[The question Casey asks]
+
+COACH NOTE: [One sentence on listening posture or silence after asking]`;
+  }
+
+  if (mode === 'close') {
+    return `${contextBlock}
+
+LEAD TYPE: ${leadCtx}
+APPOINTMENT TYPE: ${apptLabel}
+
+TASK — CLOSE FOR APPOINTMENT:
+Assess whether the timing is right to close and why. Then generate exactly 3 close attempts Casey can say right now to secure a ${apptLabel}. Each should have a different approach and energy level.
+
+Format EXACTLY as follows:
+
+CLOSE STRATEGY: [One sentence on why this is the right moment and what angle to use]
+
+OPTION 1 [Soft Assumptive — Reverse Selling]
+[Low pressure, "no" oriented, assumes they probably won't want to meet — which makes them want to]
+
+OPTION 2 [Direct Assumptive — Mike Ferry]
+[Confident, just assumes the yes, moves straight to logistics]
+
+OPTION 3 [Curiosity Close — NEPQ]
+[Makes them want to meet to get the answer or insight they don't have yet]
+
+COACH NOTE: [One sentence on what to do if they hesitate after the close]`;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// COACHING ENGINE
+// ═══════════════════════════════════════════════
+async function triggerCoach(mode) {
+  const context = getContext();
+  const leadType = document.getElementById('leadType').value;
+  const leadCtx = LEAD_CONTEXT[leadType] || LEAD_CONTEXT[''];
+
+  const btnMap = { objection: 'btnObj', question: 'btnQ', close: 'btnClose' };
+  const btn = document.getElementById(btnMap[mode]);
+  const origIcon = btn.querySelector('.btn-icon').textContent;
+  btn.classList.add('loading');
+  btn.querySelector('.btn-icon').textContent = '⟳';
+
+  const userPrompt = buildUserPrompt(mode, context, leadCtx);
+  const card = createCoachingCard(mode);
+  const output = document.getElementById('coachingOutput');
+  const empty = output.querySelector('.coaching-empty');
+  if (empty) empty.remove();
+  output.prepend(card);
+
+  let fullText = '';
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        stream: true,
+        system: buildSystemPrompt(),
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${response.status}`);
+    }
+
+    fullText = await streamResponse(response, card, mode);
+
+    // Save to coaching history
+    coachingHistory.push({ mode, text: fullText, ts: Date.now(), context: context.slice(-300) });
+
+  } catch(err) {
+    const body = card.querySelector('.coaching-card-body');
+    body.innerHTML = `<div class="error-banner">Error: ${escHtml(err.message)}</div>`;
+  } finally {
+    btn.classList.remove('loading');
+    btn.querySelector('.btn-icon').textContent = origIcon;
+  }
+}
+
+function createCoachingCard(mode) {
+  const cfg = {
+    objection: { label: 'Objection Handle', cls: 'objection' },
+    question:  { label: 'Ask Question',     cls: 'question'  },
+    close:     { label: 'Close',            cls: 'close'     },
+  }[mode];
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const card = document.createElement('div');
+  card.className = 'coaching-card';
+  card.innerHTML = `
+    <div class="coaching-card-hdr ${cfg.cls}">
+      <div class="dot"></div>${cfg.label}
+      <span class="timestamp">${time}</span>
+    </div>
+    <div class="coaching-card-body">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+    </div>`;
+  return card;
+}
+
+async function streamResponse(response, card, mode) {
+  const body = card.querySelector('.coaching-card-body');
+  body.innerHTML = '';
+  const pre = document.createElement('div');
+  pre.className = 'streaming-text';
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor';
+  pre.appendChild(cursor);
+  body.appendChild(pre);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let fullText = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    for (const line of chunk.split('\n')) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') break;
+      try {
+        const json = JSON.parse(data);
+        if (json.type === 'content_block_delta' && json.delta?.text) {
+          fullText += json.delta.text;
+          pre.textContent = fullText;
+          pre.appendChild(cursor);
+        }
+      } catch(e) {}
+    }
+  }
+
+  cursor.remove();
+  renderParsedResponse(body, fullText, mode);
+  return fullText;
+}
+
+function renderParsedResponse(body, text, mode) {
+  body.innerHTML = '';
+
+  const headerMatch = text.match(/^(OBJECTION DETECTED|CALL STAGE|CLOSE STRATEGY):\s*(.+)/m);
+  const optionMatches = [...text.matchAll(/OPTION\s+\d+\s+\[([^\]]+)\]\s*([\s\S]+?)(?=\nOPTION\s+\d+|\nCOACH NOTE:|$)/gi)];
+  const noteMatch = text.match(/COACH NOTE:\s*(.+)/s);
+
+  if (headerMatch) {
+    const d = document.createElement('div');
+    d.className = 'coaching-context-line';
+    d.textContent = headerMatch[1] + ': ' + headerMatch[2].trim();
+    body.appendChild(d);
+  }
+
+  if (optionMatches.length > 0) {
+    const list = document.createElement('div');
+    list.className = 'option-list';
+    optionMatches.forEach((m, i) => {
+      const framework = m[1].trim();
+      const optText = m[2].trim();
+      const tag = getFrameworkTag(framework);
+      const opt = document.createElement('div');
+      opt.className = 'option';
+      opt.innerHTML = `
+        <div class="option-meta">
+          <span class="option-num">${i+1}</span>
+          <span class="option-tag ${tag.cls}">${tag.short}</span>
+          <span style="font-size:11px;color:var(--muted);margin-left:2px">${framework}</span>
+        </div>
+        <div class="option-text">${escHtml(optText)}</div>`;
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+      });
+      list.appendChild(opt);
+    });
+    body.appendChild(list);
+  } else {
+    const pre = document.createElement('div');
+    pre.className = 'streaming-text';
+    pre.style.fontSize = '12px';
+    pre.textContent = text;
+    body.appendChild(pre);
+  }
+
+  if (noteMatch) {
+    const note = document.createElement('div');
+    note.className = 'coaching-note';
+    note.textContent = noteMatch[1].trim();
+    body.appendChild(note);
+  }
+}
+
+function getFrameworkTag(f) {
+  const fl = f.toLowerCase();
+  if (fl.includes('nepq') || fl.includes('consequence') || fl.includes('solution') || fl.includes('curiosity')) return { cls: 'tag-nepq', short: 'NEPQ' };
+  if (fl.includes('reverse') || fl.includes('soft') || fl.includes('presumptive') || fl.includes('socratic')) return { cls: 'tag-reverse', short: 'Reverse' };
+  if (fl.includes('ferry') || fl.includes('mfo') || fl.includes('direct') || fl.includes('assumptive')) return { cls: 'tag-mfo', short: 'MFO' };
+  if (fl.includes('belfort') || fl.includes('straight') || fl.includes('certainty')) return { cls: 'tag-belfort', short: 'Straight Line' };
+  return { cls: 'tag-mfo', short: f.split(' ')[0] };
+}
+
+// ═══════════════════════════════════════════════
+// NEW CALL
+// ═══════════════════════════════════════════════
+function confirmNewCall() {
+  if (!transcriptLines.length && !coachingHistory.length) { resetCall(); return; }
+  if (confirm('Save this call to history and start a new one?')) {
+    saveCallToHistory();
+    resetCall();
+  }
+}
+
+function resetCall() {
+  stopMic();
+  stopTimer();
+  callStartTime = null;
+  document.getElementById('callTimer').textContent = '00:00';
+  transcriptLines.length = 0;
+  coachingHistory.length = 0;
+
+  document.getElementById('transcriptScroll').innerHTML =
+    '<div class="transcript-placeholder" id="transcriptPlaceholder">Hit <strong>Start Listening</strong> — or type a note below to add context manually.</div>';
+
+  document.getElementById('coachingOutput').innerHTML =
+    `<div class="coaching-empty"><div class="e-icon">🎯</div><div>Start the call, then hit a button when you need help.</div><div style="font-size:11px;margin-top:3px;opacity:0.6;">Objection · Question · Close</div></div>`;
+
+  updateContextStats();
+
+  // Reset LPMAMA
+  LPMAMA_ITEMS.forEach(i => { lpmamaState[i.key] = { covered: false, note: '', aiSuggested: false }; });
+  renderLPMAMA();
+}
+
+// ═══════════════════════════════════════════════
+// CALL HISTORY (localStorage)
+// ═══════════════════════════════════════════════
+function saveCallToHistory() {
+  if (!transcriptLines.length) return;
+
+  const entry = {
+    id: Date.now(),
+    leadType: document.getElementById('leadType').value || 'Unknown',
+    leadLabel: document.getElementById('leadType').selectedOptions[0]?.text || 'Unknown',
+    duration: getCallDuration(),
+    startedAt: callStartTime ? new Date(callStartTime).toLocaleString() : new Date().toLocaleString(),
+    transcript: getFullTranscript(),
+    lpmama: isBuyerLead ? JSON.parse(JSON.stringify(lpmamaState)) : null,
+  };
+
+  const history = getHistory();
+  history.unshift(entry);
+  // Keep last 50
+  if (history.length > 50) history.length = 50;
+  localStorage.setItem('callcoach_history', JSON.stringify(history));
+}
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('callcoach_history') || '[]'); }
+  catch(e) { return []; }
+}
+
+function openHistory() {
+  const history = getHistory();
+  const body = document.getElementById('historyBody');
+  body.innerHTML = '';
+
+  if (!history.length) {
+    body.innerHTML = '<div class="history-empty">No calls saved yet. Complete a call and hit ↺ New Call to save it.</div>';
+  } else {
+    history.forEach(entry => {
+      const card = document.createElement('div');
+      card.className = 'history-card';
+      card.innerHTML = `
+        <div class="history-card-hdr" onclick="toggleHistoryCard(this)">
+          <div>
+            <div class="hc-lead">${escHtml(entry.leadLabel)}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">${entry.startedAt} &middot; ${entry.duration}</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted)">${entry.transcript ? entry.transcript.split('\n').filter(Boolean).length + ' lines' : 'No transcript'}</div>
+        </div>
+        <div class="history-card-body">
+          ${entry.transcript
+            ? '<div class="hc-section">Transcript</div><div class="hc-transcript">' + escHtml(entry.transcript) + '</div>'
+            : '<div style="font-size:12px;color:var(--muted);font-style:italic">No transcript recorded</div>'}
+          ${entry.lpmama ? `
+            <div class="hc-section">LPMAMA</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px">
+              ${LPMAMA_ITEMS.map(item => {
+                const s = entry.lpmama[item.key];
+                return `<span style="font-size:11px;padding:2px 8px;border-radius:999px;background:${s?.covered ? 'rgba(46,213,115,0.12)' : 'var(--surface3)'};color:${s?.covered ? 'var(--green)' : 'var(--muted)'};">${item.letter} ${item.name}${s?.note ? ': ' + s.note : ''}</span>`;
+              }).join('')}
+            </div>
+          ` : ''}
+        </div>`;
+      body.appendChild(card);
+    });
+  }
+
+  document.getElementById('historyModal').classList.remove('hidden');
+}
+
+function toggleHistoryCard(hdr) {
+  hdr.parentElement.classList.toggle('open');
+}
+
+function closeHistory() {
+  document.getElementById('historyModal').classList.add('hidden');
+}
+
+function clearHistory() {
+  if (confirm('Clear all call history? This cannot be undone.')) {
+    localStorage.removeItem('callcoach_history');
+    closeHistory();
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ERROR DISPLAY
+// ═══════════════════════════════════════════════
+function showError(msg) {
+  const output = document.getElementById('coachingOutput');
+  const errDiv = document.createElement('div');
+  errDiv.className = 'error-banner';
+  errDiv.style.cssText = 'margin:0;flex-shrink:0';
+  errDiv.textContent = msg;
+  output.prepend(errDiv);
+  setTimeout(() => errDiv.remove(), 6000);
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+onLeadTypeChange();
+renderLPMAMA();
+</script>
+</body>
+</html>
