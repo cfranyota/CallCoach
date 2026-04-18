@@ -575,6 +575,12 @@ select:focus { border-color: var(--accent); }
 
 <script>
 // ═══════════════════════════════════════════════
+// CONFIG — set your Cloudflare Worker URL here after deploying worker.js
+// ═══════════════════════════════════════════════
+const PROXY_URL = 'https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev';
+// Example: 'https://callcoach-proxy.casey-rise.workers.dev'
+
+// ═══════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════
 let recognition = null;
@@ -705,7 +711,7 @@ Respond ONLY with valid JSON like this:
 }`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1106,7 +1112,7 @@ async function triggerCoach(mode) {
   let fullText = '';
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1385,11 +1391,27 @@ function showError(msg) {
   setTimeout(() => errDiv.remove(), 6000);
 }
 
-// ═══════════════════════════════════════════════
 // INIT
-// ═══════════════════════════════════════════════
 onLeadTypeChange();
 renderLPMAMA();
+
+// Warn if proxy URL hasn't been configured
+if (PROXY_URL.includes('YOUR-WORKER')) {
+  const output = document.getElementById('coachingOutput');
+  output.innerHTML = `
+    <div style="background:rgba(255,165,2,0.08);border:1px solid rgba(255,165,2,0.3);border-radius:12px;padding:18px 16px;font-size:13px;line-height:1.7;">
+      <div style="font-weight:700;color:#ffa502;margin-bottom:8px;">One setup step required</div>
+      <div style="color:#c0b090;margin-bottom:12px;">The AI buttons need a Cloudflare Worker proxy to reach the Anthropic API. Takes about 3 minutes to set up once — then it just works.</div>
+      <div style="color:#d0c0a0;font-size:12px;">
+        1. Go to <strong style="color:#ffa502">dash.cloudflare.com</strong> and sign up free (no credit card needed)<br>
+        2. Workers and Pages &gt; Create Worker &gt; paste the contents of worker.js &gt; Save and Deploy<br>
+        3. In the Worker, go to Settings &gt; Variables &gt; add ANTHROPIC_API_KEY with your key from platform.anthropic.com<br>
+        4. Copy your worker URL, e.g. callcoach.yourname.workers.dev<br>
+        5. Open callcoach_v2.html, find PROXY_URL near the top of the script block, paste your worker URL in place of YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev<br>
+        6. Save and re-upload to GitHub Pages
+      </div>
+    </div>`;
+}
 </script>
 </body>
 </html>
